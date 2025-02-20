@@ -9,6 +9,8 @@ dependencies = [
     "jinja2>=3.1.5",
     "mypy>=1.14.1",
     "pydantic>=2.10.6",
+    "pytest>=8.3.4",
+    "pyyaml>=6.0.2",
     "ruff>=0.9.4",
     "toml>=0.10.2",
     "tomli>=2.2.1",
@@ -20,7 +22,14 @@ dependencies = [
 crab = "crab.cli:app"
 
 [dependency-groups]
-dev = ["isort>=6.0.0", "mypy>=1.14.1", "pre-commit>=4.1.0", "ruff>=0.9.4"]
+dev = [
+    "isort>=6.0.0",
+    "mypy>=1.14.1",
+    "pre-commit>=4.1.0",
+    "ruff>=0.9.4",
+    "types-pyyaml>=6.0.12.20241230",
+    "types-toml>=0.10.8.20240310",
+]
 
 
 [tool.pylint]
@@ -32,3 +41,46 @@ disable = [
     "W0718", # Wide exception clause
     "W0621", # Redefining name %r from outer scope
 ]
+
+[tool.mypy]
+exclude = "src/crab/data/"
+files = ["src"]
+
+# Enable strict optional checking
+strict_optional = true
+
+# Disallow untyped function definitions
+disallow_untyped_defs = false
+
+# Disallow untyped calls
+disallow_untyped_calls = false
+
+# Disallow untyped decorators
+disallow_untyped_decorators = true
+
+# Disallow subscripted generics in Python 3.9 and earlier
+disallow_subclassing_any = true
+
+# Enable incremental mode
+incremental = true
+
+# Show error codes in output
+show_error_codes = true
+
+# Enable strict mode
+strict = true
+
+# Ignore missing imports
+ignore_missing_imports = true
+
+# Follow imports for type checking
+follow_imports = "silent"
+
+# Cache directory for mypy
+cache_dir = ".mypy_cache"
+
+# Additional options
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true

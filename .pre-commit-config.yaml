@@ -1,21 +1,6 @@
 repos:
 - repo: local
   hooks:
-    - id: isort
-      name: isort
-      entry: isort
-      language: python
-      types: [python]
-      args: ["--profile", "black"]
-
-    - id: mypy
-      name: mypy
-      entry: mypy
-      language: python
-      types: [python]
-      require_serial: true
-      args: [--strict, --explicit-package-bases]
-
     - id: ruff-format
       name: ruff format
       entry: ruff format
@@ -29,3 +14,16 @@ repos:
       language: python
       types: [python]
       require_serial: true
+    
+    - id: isort
+      name: isort
+      entry: isort
+      language: python
+      types: [python]
+      args: ["--profile", "black"]
+
+    - id: mypy
+      name: mypy
+      entry: "./run-mypy.sh"
+      language: python
+      types: [python]

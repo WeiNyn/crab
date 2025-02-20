@@ -50,3 +50,13 @@ def create_venv(venv_dir: Path) -> None:
         ) from e
 
     logger.info("Virtual environment created at %s", venv_dir)
+
+
+def install_dependencies(project_dir: Path) -> None:
+    """Install project dependencies using uv."""
+    cmd = ["uv", "sync"]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, cwd=project_dir)
+    except subprocess.CalledProcessError as e:
+        logger.error("uv sync failed (exit code %d):\n%s", e.returncode, e.stderr)
+        raise RuntimeError(f"Failed to install dependencies: {e.stderr.strip()}") from e

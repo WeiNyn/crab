@@ -68,8 +68,28 @@ class CrabConfig(BaseModel):
 
     @classmethod
     def load(cls, path: Path) -> "CrabConfig":
-        """Load and validate crab.toml."""
+        """Load and validate configuration from pyproject.toml.
+
+        Args:
+            path: Path to pyproject.toml file.
+
+        Returns:
+            CrabConfig: Validated configuration object.
+
+        Raises:
+            FileNotFoundError: If pyproject.toml doesn't exist.
+            KeyError: If [tool.crab] section is missing.
+            ValueError: If configuration is invalid.
+        """
+        if not path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {path}")
 
         with open(path, "rb") as f:
             data = tomli.load(f)
-        return cls(**data)
+
+        try:
+            crab_config = data["tool"]["crab"]
+        except KeyError:
+            raise KeyError("Missing [tool.crab] section in pyproject.toml")
+
+        return cls(**crab_config)

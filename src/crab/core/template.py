@@ -1,14 +1,20 @@
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict
 
 import jinja2
+import toml
+import yaml
 
 
 class TemplateRenderer:
     def __init__(self, template_name: str = "basic"):
+        self.template_name = template_name
+        search_path = (
+            Path(__file__).parent.parent / "data" / "templates" / template_name
+        )
         self.env = jinja2.Environment(
-            # loader=jinja2.PackageLoader("crab", f"data/templates/{template_name}"),
-            loader=jinja2.FileSystemLoader(f"src/crab/data/templates/{template_name}"),
+            loader=jinja2.FileSystemLoader(str(search_path) + "/"),
             autoescape=False,
             keep_trailing_newline=True,
         )
@@ -26,11 +32,338 @@ class TemplateRenderer:
             template = self.env.get_template(template_path)
             rendered_content = template.render(**context)
 
-            # Replace {{ project_name }} in paths
-            output_path = target_dir / template_path.replace(
+            # Replace {{ project_name }} in paths and handle .j2 extension
+            output_path = template_path.replace(
                 "{{ project_name }}", context["project_name"]
             )
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            output_path: Path = target_dir.parent / output_path  # type: ignore
+            output_path.parent.mkdir(parents=True, exist_ok=True)  # type: ignore
 
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(rendered_content)
+
+            pyproject_renderer = PyprojectRenderer()
+            pyproject_renderer.render(
+                target_dir,
+                context["project_name"],
+                context["author"],
+                self.template_name,
+            )
+
+            pre_commit_hook_renderer = PreCommitHookRenderer()
+            pre_commit_hook_renderer.render(target_dir)
+
+
+class PreCommitHookRenderer:
+    def __init__(self):
+        self.mypy: bool = True
+        self.ruff: bool = True
+        self.black: bool = False
+        self.isort: bool = True
+
+    def with_mypy(self, enabled: bool = True) -> "PreCommitHookRenderer":
+        self.mypy = enabled
+        return self
+
+    def with_ruff(self, enabled: bool = True) -> "PreCommitHookRenderer":
+        self.ruff = enabled
+        return self
+
+    def with_black(self, enabled: bool = True) -> "PreCommitHookRenderer":
+        self.black = enabled
+        return self
+
+    def with_isort(self, enabled: bool = True) -> "PreCommitHookRenderer":
+        self.isort = enabled
+        return self
+
+    def _render_mypy(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "mypy",
+                "name": "mypy",
+                "entry": "uvx mypy",
+                "language": "python",
+                "types": ["python"],
+                "args": ["--strict", "--explicit-package-bases"],
+            }
+        ]
+
+    def _render_ruff(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "ruff-format",
+                "name": "ruff format",
+                "entry": "uvx ruff format",
+                "language": "python",
+                "types": ["python"],
+                "require_serial": True,
+            },
+            {
+                "id": "ruff-checck",
+                "name": "ruff check",
+                "entry": "uvx ruff check",
+                "language": "python",
+                "types": ["python"],
+                "args": ["--fix"],
+            },
+        ]
+
+    def _render_black(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "black",
+                "name": "black",
+                "entry": "uvx black",
+                "language": "python",
+                "types": ["python"],
+            }
+        ]
+
+    def _render_isort(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "isort",
+                "name": "isort",
+                "entry": "uvx isort",
+                "language": "python",
+                "types": ["python"],
+            }
+        ]
+
+    def render(self, target_dir: Path) -> None:
+        hooks = []
+
+        if self.mypy:
+            hooks.extend(self._render_mypy())
+        if self.ruff:
+            hooks.extend(self._render_ruff())
+        if self.black:
+            hooks.extend(self._render_black())
+        if self.isort:
+            hooks.extend(self._render_isort())
+
+        config = {}
+        config["repos"] = [
+            {
+                "repo": "local",
+                "hooks": hooks,
+            }
+        ]
+        with open(target_dir / ".pre-commit-config.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(config, f, sort_keys=False)
+
+
+class PyprojectRenderer:
+    def __init__(self):
+        self.dependencies = []
+        self.dev_dependencies = [
+            "pytest>=7.0.0",
+            "pytest-cov>=4.0.0",
+            "ruff>=0.1.0",
+            "mypy>=1.0.0",
+            "black>=23.0.0",
+            "isort>=5.0.0",
+        ]
+        self.ruff = True
+        self.mypy = True
+        self.black = False
+        self.isort = True
+
+    def with_dependency(self, dependency: str) -> "PyprojectRenderer":
+        self.dependencies.append(dependency)
+        return self
+
+    def with_dev_dependency(self, dependency: str) -> "PyprojectRenderer":
+        self.dev_dependencies.append(dependency)
+        return self
+
+    def with_ruff(self, enabled: bool = True) -> "PyprojectRenderer":
+        self.ruff = enabled
+        return self
+
+    def with_mypy(self, enabled: bool = True) -> "PyprojectRenderer":
+        self.mypy = enabled
+        return self
+
+    def with_black(self, enabled: bool = True) -> "PyprojectRenderer":
+        self.black = enabled
+        return self
+
+    def with_isort(self, enabled: bool = True) -> "PyprojectRenderer":
+        self.isort = enabled
+        return self
+
+    def _render_ruff(self) -> dict[str, Any]:
+        return (
+            {
+                "tool": {
+                    "ruff": {
+                        "line-length": 88,
+                        "target-version": "py38",
+                        "lint": {
+                            "select": ["E4", "E7", "E9", "F"],
+                            "ignore": [],
+                        },
+                    },
+                    "format": {
+                        "quote-style": "double",
+                        "indent-style": "space",
+                        "skip-magic-trailing-comma": False,
+                        "line-ending": "auto",
+                    },
+                },
+            }
+            if self.ruff
+            else {}
+        )
+
+    def _render_mypy(self) -> dict[str, Any]:
+        return (
+            {
+                "tool": {
+                    "mypy": {
+                        "strict": True,
+                        "ignore_missing_imports": True,
+                        "allow_untyped_decorators": True,
+                        "disallow_any_generics": False,
+                    },
+                }
+            }
+            if self.mypy
+            else {}
+        )
+
+    def _render_black(self) -> dict[str, Any]:
+        return (
+            {
+                "tool": {
+                    "black": {
+                        "line-length": 88,
+                        "target-version": ["py38"],
+                    },
+                }
+            }
+            if self.black
+            else {}
+        )
+
+    def _render_isort(self) -> dict[str, Any]:
+        return (
+            {
+                "tool": {
+                    "isort": {
+                        "profile": "black",
+                    },
+                }
+            }
+            if self.isort
+            else {}
+        )
+
+    def _render_crab(self, template: str, venv_directory: str) -> dict[str, Any]:
+        return {
+            "tool": {
+                "crab": {
+                    "template": template,
+                    "venv-directory": venv_directory,
+                },
+                "paths": {
+                    "source": "src",
+                    "tests": "tests",
+                    "docs": "docs",
+                },
+                "lint": {
+                    "enabled-tools": ["ruff", "mypy"],
+                },
+                "test": {
+                    "directory": "tests",
+                    "pytest-args": ["-v", "--cov"],
+                    "coverage": {
+                        "enable": True,
+                        "threshold": 90,
+                    },
+                },
+            }
+        }
+
+    def _render_pytest(self) -> dict[str, Any]:
+        return {
+            "tool": {
+                "pytest": {
+                    "ini_options": {
+                        "addopts": "-v --cov=src --cov-report=term-missing",
+                        "testpaths": ["tests"],
+                    },
+                },
+            }
+        }
+
+    def _render_project(self, project_name: str, author: str) -> dict[str, Any]:
+        return {
+            "project": {
+                "name": project_name,
+                "version": "0.1.0",
+                "description": "My new Python project",
+                "authors": [{"name": author}],
+                "dependencies": self.dependencies,
+                "requires-python": ">=3.8",
+                "readme": "README.md",
+                "license": {
+                    "text": "MIT",
+                },
+            }
+        }
+
+    def _render_devl_dependencies(self) -> dict[str, Any]:
+        return {
+            "dependency-groups": {
+                "dev": self.dev_dependencies,
+            }
+        }
+
+    def render(
+        self, target_dir: Path, project_name: str, author: str, template: str
+    ) -> None:
+        config: OrderedDict[Any, Any] = OrderedDict()
+
+        config = _merge_dictionaries(config, self._render_project(project_name, author))
+        config = _merge_dictionaries(config, self._render_crab(template, ".venv"))
+        config = _merge_dictionaries(config, self._render_ruff())
+        config = _merge_dictionaries(config, self._render_mypy())
+        config = _merge_dictionaries(config, self._render_black())
+        config = _merge_dictionaries(config, self._render_isort())
+        config = _merge_dictionaries(config, self._render_pytest())
+        config = _merge_dictionaries(config, self._render_devl_dependencies())
+
+        with open(target_dir / "pyproject.toml", "w", encoding="utf-8") as f:
+            f.write(toml.dumps(config))
+
+
+def _merge_dictionaries(
+    dict1: OrderedDict[Any, Any], dict2: dict[Any, Any]
+) -> OrderedDict[Any, Any]:
+    """
+    Recursive merge dictionaries.
+
+    :param dict1: Base dictionary to merge.
+    :param dict2: Dictionary to merge on top of base dictionary.
+    :return: Merged dictionary
+    """
+    merged_dict = OrderedDict()
+    for key, val in dict1.items():
+        if isinstance(val, dict):
+            dict2_node = dict2.setdefault(key, {})
+            merged_dict[key] = _merge_dictionaries(
+                OrderedDict(val), OrderedDict(dict2_node)
+            )
+        else:
+            if key not in dict2:
+                merged_dict[key] = val
+
+    for key, val in dict2.items():
+        if key not in dict1:
+            merged_dict[key] = val
+
+    return merged_dict
