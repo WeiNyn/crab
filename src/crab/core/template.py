@@ -54,6 +54,10 @@ class TemplateRenderer:
             pre_commit_hook_renderer = PreCommitHookRenderer()
             pre_commit_hook_renderer.render(target_dir)
 
+            # Add Makefile rendering
+            makefile_renderer = MakefileRenderer()
+            makefile_renderer.render(target_dir)
+
 
 class PreCommitHookRenderer:
     def __init__(self):
@@ -225,7 +229,7 @@ class PyprojectRenderer:
                 "tool": {
                     "mypy": {
                         "strict_optional": True,
-                        "disabllow_untyped_defs": False,
+                        "disallow_untyped_defs": False,
                         "disallow_untyped_calls": False,
                         "disallow_untyped_decorators": False,
                         "disallow_subclassing_any": True,
@@ -233,7 +237,7 @@ class PyprojectRenderer:
                         "show_error_codes": True,
                         "strict": True,
                         "ignore_missing_imports": True,
-                        "follow_imports": "slient",
+                        "follow_imports": "silent",
                         "cache_dir": ".mypy_cache",
                         "warn_unused_ignores": True,
                         "warn_redundant_casts": True,
@@ -304,7 +308,6 @@ class PyprojectRenderer:
             "tool": {
                 "pytest": {
                     "ini_options": {
-                        "addopts": "-v --cov=src --cov-report=term-missing",
                         "testpaths": ["tests"],
                     },
                 },
@@ -378,3 +381,34 @@ def _merge_dictionaries(
             merged_dict[key] = val
 
     return merged_dict
+
+
+class MakefileRenderer:
+    def __init__(self):
+        self.template = """
+.PHONY: lint fix test build clean
+
+SRC_DIR = src
+TEST_DIR = tests
+
+lint:
+\truff check $(SRC_DIR) $(TEST_DIR)
+\tmypy $(SRC_DIR) $(TEST_DIR)
+
+fix:
+\tisort $(SRC_DIR) $(TEST_DIR)
+\truff format $(SRC_DIR) $(TEST_DIR)
+
+test:
+\tpytest -v 
+
+build: clean
+\tpython -m build
+
+clean:
+\trm -rf build/ dist/ *.egg-info/ .pytest_cache/ .coverage .mypy_cache/ .ruff_cache/
+"""
+
+    def render(self, target_dir: Path) -> None:
+        with open(target_dir / "Makefile", "w", encoding="utf-8") as f:
+            f.write(self.template.lstrip())
