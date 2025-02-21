@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 
 from crab.core import TemplateRenderer
-from crab.integrations.uv import create_venv, install_dependencies
+from crab.integrations.uv import install_dependencies
 
 app = typer.Typer()
 
@@ -19,11 +19,7 @@ def hello() -> None:
 def init(
     project_name: str = typer.Argument(..., help="Name of the project"),
     template: str = typer.Option("basic", help="Template to use"),
-    venv: bool = typer.Option(False, help="Create a virtual environment with uv"),
     author: str = typer.Option("Anonymous", prompt=True),
-    install: bool = typer.Option(
-        True, help="Install dependencies after initialization"
-    ),
     setup_git: bool = typer.Option(True, help="Initialize git repository"),
 ) -> None:
     """Initialize a new Python project."""
@@ -55,20 +51,6 @@ def init(
         typer.secho(f"❌ Error rendering template: {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
-    # Create venv if requested
-    if venv:
-        typer.secho("🔧 Creating virtual environment...", fg=typer.colors.YELLOW)
-        try:
-            create_venv(target_dir / ".venv")
-            typer.secho("✅ Virtual environment created!", fg=typer.colors.GREEN)
-        except (RuntimeError, FileExistsError) as e:
-            typer.secho(
-                f"❌ Error creating virtual environment: {e}",
-                fg=typer.colors.RED,
-                err=True,
-            )
-            raise typer.Exit(code=1)
-
     # Change to project directory for remaining operations
     os.chdir(target_dir)
 
@@ -92,38 +74,37 @@ def init(
             )
 
     # Install dependencies if requested
-    if install:
-        typer.secho("📥 Installing dependencies...", fg=typer.colors.YELLOW)
-        try:
-            install_dependencies(target_dir)
+    typer.secho("📥 Installing dependencies...", fg=typer.colors.YELLOW)
+    try:
+        install_dependencies(target_dir)
 
-            # Install pre-commit hooks if git is initialized
-            if setup_git and Path(".git").exists():
-                typer.secho("🔗 Installing pre-commit hooks...", fg=typer.colors.YELLOW)
-                try:
-                    subprocess.run(
-                        ["uvx", "pre-commit", "install"],
-                        check=True,
-                        capture_output=True,
-                    )
-                except subprocess.CalledProcessError as e:
-                    typer.secho(
-                        f"❌ Error installing pre-commit hooks: {e.stderr.decode()}",
-                        fg=typer.colors.RED,
-                        err=True,
-                    )
-                    raise typer.Exit(code=1)
-                typer.secho("✅ Pre-commit hooks installed!", fg=typer.colors.GREEN)
+        # Install pre-commit hooks if git is initialized
+        if setup_git and Path(".git").exists():
+            typer.secho("🔗 Installing pre-commit hooks...", fg=typer.colors.YELLOW)
+            try:
+                subprocess.run(
+                    ["uvx", "pre-commit", "install"],
+                    check=True,
+                    capture_output=True,
+                )
+            except subprocess.CalledProcessError as e:
+                typer.secho(
+                    f"❌ Error installing pre-commit hooks: {e.stderr.decode()}",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+            typer.secho("✅ Pre-commit hooks installed!", fg=typer.colors.GREEN)
 
-            typer.secho("✅ Dependencies installed!", fg=typer.colors.GREEN)
-        except Exception as e:
-            typer.secho(
-                f"❌ Error installing dependencies: {e}", fg=typer.colors.RED, err=True
-            )
-            typer.secho(
-                "⚠️  You may need to install dependencies manually.",
-                fg=typer.colors.YELLOW,
-            )
+        typer.secho("✅ Dependencies installed!", fg=typer.colors.GREEN)
+    except Exception as e:
+        typer.secho(
+            f"❌ Error installing dependencies: {e}", fg=typer.colors.RED, err=True
+        )
+        typer.secho(
+            "⚠️  You may need to install dependencies manually.",
+            fg=typer.colors.YELLOW,
+        )
 
     typer.secho(
         "\n✨ Project initialized successfully! ", fg=typer.colors.GREEN, nl=False

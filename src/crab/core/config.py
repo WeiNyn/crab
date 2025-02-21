@@ -5,27 +5,48 @@ import tomli
 from pydantic import BaseModel, Field
 
 
+class PreCommitToolConfig(BaseModel):
+    enabled: bool = True
+    args: Optional[List[str]] = None
+    require_serial: bool = True
+
+
+class LintConfig(BaseModel):
+    isort: PreCommitToolConfig = Field(
+        default_factory=lambda: PreCommitToolConfig(args=["--profile", "black"])
+    )
+    mypy: PreCommitToolConfig = Field(
+        default_factory=lambda: PreCommitToolConfig(
+            args=["--strict", "--explicit-package-bases"]
+        )
+    )
+    ruff_format: PreCommitToolConfig = Field(
+        default_factory=lambda: PreCommitToolConfig()
+    )
+    ruff_lint: PreCommitToolConfig = Field(
+        default_factory=lambda: PreCommitToolConfig(args=["--fix"])
+    )
+
+
 class DependencyGroup(BaseModel):
     name: str
     packages: List[str]
 
 
-class LintToolConfig(BaseModel):
-    args: Optional[List[str]] = None
-    config: Optional[str] = None
-
-
 def default_dependencies() -> Dict[str, List[Union[str, DependencyGroup]]]:
     return {
         "sources": ["https://pypi.org/simple"],
-        "groups": [DependencyGroup(name="dev", packages=["pytest", "ruff"])],
-    }
-
-
-def default_lint() -> Dict[str, Union[List[str], LintToolConfig]]:
-    return {
-        "enabled_tools": ["ruff", "mypy"],
-        "ruff": LintToolConfig(args=["--fix"], config="ruff.toml"),
+        "groups": [
+            DependencyGroup(
+                name="dev",
+                packages=[
+                    "isort",
+                    "mypy",
+                    "ruff",
+                    "pre-commit",
+                ],
+            )
+        ],
     }
 
 
@@ -48,9 +69,7 @@ class CrabConfig(BaseModel):
     )
 
     # Linting
-    lint: Dict[str, Union[List[str], LintToolConfig]] = Field(
-        default_factory=default_lint
-    )
+    lint: LintConfig = Field(default_factory=LintConfig)
 
     # Testing
     test: Dict[str, Union[str, List[str], Dict[str, Union[bool, int]]]] = Field(

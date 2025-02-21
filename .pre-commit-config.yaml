@@ -24,6 +24,7 @@ repos:
 
     - id: mypy
       name: mypy
-      entry: "./run-mypy.sh"
+      entry: mypy
       language: python
       types: [python]
+      args: ["--install-types", "--non-interactive"]

@@ -33,12 +33,12 @@ class TemplateRenderer:
             rendered_content = template.render(**context)
 
             # Replace {{ project_name }} in paths and handle .j2 extension
-            output_path = template_path.replace(
+            output_file = template_path.replace(
                 "{{ project_name }}", context["project_name"]
             )
 
-            output_path: Path = target_dir.parent / output_path  # type: ignore
-            output_path.parent.mkdir(parents=True, exist_ok=True)  # type: ignore
+            output_path: Path = target_dir.parent / output_file
+            output_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(rendered_content)
@@ -53,6 +53,11 @@ class TemplateRenderer:
 
             pre_commit_hook_renderer = PreCommitHookRenderer()
             pre_commit_hook_renderer.render(target_dir)
+
+            # write to ./run-mypy.sh
+            with open(target_dir / "run-mypy.sh", "w", encoding="utf-8") as f:
+                f.write("#!/bin/bash\n")
+                f.write("uvx mypy src tests\n")
 
 
 class PreCommitHookRenderer:
@@ -83,10 +88,9 @@ class PreCommitHookRenderer:
             {
                 "id": "mypy",
                 "name": "mypy",
-                "entry": "uvx mypy",
+                "entry": "./run-mypy.sh",
                 "language": "python",
                 "types": ["python"],
-                "args": ["--strict", "--explicit-package-bases"],
             }
         ]
 
@@ -224,10 +228,21 @@ class PyprojectRenderer:
             {
                 "tool": {
                     "mypy": {
+                        "strict_optional": True,
+                        "disabllow_untyped_defs": False,
+                        "disallow_untyped_calls": False,
+                        "disallow_untyped_decorators": False,
+                        "disallow_subclassing_any": True,
+                        "incremental": True,
+                        "show_error_codes": True,
                         "strict": True,
                         "ignore_missing_imports": True,
-                        "allow_untyped_decorators": True,
-                        "disallow_any_generics": False,
+                        "follow_imports": "slient",
+                        "cache_dir": ".mypy_cache",
+                        "warn_unused_ignores": True,
+                        "warn_redundant_casts": True,
+                        "warn_return_any": True,
+                        "warn_unreachable": True,
                     },
                 }
             }
