@@ -54,11 +54,6 @@ class TemplateRenderer:
             pre_commit_hook_renderer = PreCommitHookRenderer()
             pre_commit_hook_renderer.render(target_dir)
 
-            # write to ./run-mypy.sh
-            with open(target_dir / "run-mypy.sh", "w", encoding="utf-8") as f:
-                f.write("#!/bin/bash\n")
-                f.write("uvx mypy src tests\n")
-
 
 class PreCommitHookRenderer:
     def __init__(self):
@@ -88,9 +83,10 @@ class PreCommitHookRenderer:
             {
                 "id": "mypy",
                 "name": "mypy",
-                "entry": "./run-mypy.sh",
+                "entry": "mypy",
                 "language": "python",
                 "types": ["python"],
+                "args": ["--install-type", "--non-interactive"],
             }
         ]
 
@@ -99,7 +95,7 @@ class PreCommitHookRenderer:
             {
                 "id": "ruff-format",
                 "name": "ruff format",
-                "entry": "uvx ruff format",
+                "entry": "ruff format",
                 "language": "python",
                 "types": ["python"],
                 "require_serial": True,
@@ -107,7 +103,7 @@ class PreCommitHookRenderer:
             {
                 "id": "ruff-checck",
                 "name": "ruff check",
-                "entry": "uvx ruff check",
+                "entry": "ruff check",
                 "language": "python",
                 "types": ["python"],
                 "args": ["--fix"],
@@ -119,7 +115,7 @@ class PreCommitHookRenderer:
             {
                 "id": "black",
                 "name": "black",
-                "entry": "uvx black",
+                "entry": "black",
                 "language": "python",
                 "types": ["python"],
             }
@@ -130,7 +126,7 @@ class PreCommitHookRenderer:
             {
                 "id": "isort",
                 "name": "isort",
-                "entry": "uvx isort",
+                "entry": "isort",
                 "language": "python",
                 "types": ["python"],
             }
@@ -323,7 +319,7 @@ class PyprojectRenderer:
                 "description": "My new Python project",
                 "authors": [{"name": author}],
                 "dependencies": self.dependencies,
-                "requires-python": ">=3.8",
+                "requires-python": ">=3.11",
                 "readme": "README.md",
                 "license": {
                     "text": "MIT",
