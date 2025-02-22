@@ -18,7 +18,7 @@ Crab is a batteries-included CLI tool that streamlines Python project setup and 
 ## Installation
 
 ```bash
-pip install crab-cli
+pip install rcrab
 ```
 
 ## Quick Start
